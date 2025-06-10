@@ -79,12 +79,17 @@ class WorkMailGUI:
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         main_frame.grid_rowconfigure(5, weight=1)  # 讓關鍵字列表可以垂直伸展
         main_frame.grid_columnconfigure(1, weight=1)  # 讓輸入框可以水平伸展
+        main_frame.grid_columnconfigure(2, weight=0)
         
         # 資料夾名稱
         ttk.Label(main_frame, text="資料夾名稱:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.folder_name = ttk.Entry(main_frame, width=40)
         self.folder_name.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5)
         self.folder_name.insert(0, "研發處")
+
+        # 是否只抓取週報郵件
+        self.filter_weekly_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(main_frame, text="僅抓取週報郵件", variable=self.filter_weekly_var).grid(row=0, column=2, sticky=tk.W)
         
         # 狀態列
         self.status_var = tk.StringVar()
@@ -284,10 +289,11 @@ class WorkMailGUI:
                 extractor = OutlookReportExtractor()
                 # 傳遞時間區間參數和關鍵字
                 extractor.run_extraction(
-                    folder_name, 
-                    start_date=start_date, 
+                    folder_name,
+                    start_date=start_date,
                     end_date=end_date,
-                    keywords=self.get_keywords()
+                    keywords=self.get_keywords(),
+                    filter_weekly=self.filter_weekly_var.get()
                 )
                 
                 # 完成後顯示訊息

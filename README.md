@@ -38,11 +38,16 @@ pip install -r requirements.txt
 ```bash
 python workmail.py
 ```
+要處理所有郵件而不過濾週報關鍵字，可加入 `--no-filter-weekly`：
+```bash
+python workmail.py --no-filter-weekly
+```
 
 ### 圖形化介面版本
 ```bash
 python workmail_gui.py
 ```
+在 GUI 介面中勾選「僅抓取週報郵件」以啟用或停用關鍵字過濾。
 
 ### 一鍵打包
 ```bash

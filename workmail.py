@@ -200,8 +200,14 @@ class OutlookReportExtractor:
         
         return is_report
     
-    def get_emails_from_folder(self, folder_name="研發處", start_date=None, end_date=None):
-        """從指定資料夾抓取郵件，遞迴搜尋所有子資料夾"""
+    def get_emails_from_folder(self, folder_name="研發處", start_date=None, end_date=None, filter_weekly=True):
+        """從指定資料夾抓取郵件，遞迴搜尋所有子資料夾
+
+        :param folder_name: 目標資料夾名稱
+        :param start_date: 搜尋開始日期
+        :param end_date: 搜尋結束日期
+        :param filter_weekly: 是否只保留週報郵件
+        """
         try:
             print(f"🔍 開始搜尋 Outlook 資料夾結構...")
             inbox = self.namespace.GetDefaultFolder(6)  # 6 = olFolderInbox
@@ -291,11 +297,14 @@ class OutlookReportExtractor:
                                 print(f"\n   📧 檢查信件 [{j+1}/{folder_total}]:")
                                 print(f"   👤 寄件者: {sender}")
                                 print(f"   📅 時間: {received_time.strftime('%Y/%m/%d %H:%M')}")
-                                
-                                # 使用優化後的週報判斷函數
-                                if self.is_weekly_report(subject):
+
+                                is_weekly = self.is_weekly_report(subject)
+
+                                if is_weekly:
                                     weekly_count += 1
                                     print(f"   🎯 發現週報: [{sender}] {subject}")
+
+                                if (not filter_weekly) or is_weekly:
                                     folder_messages.append(item)
                             
                             # 顯示前3封郵件的詳情用於調試
@@ -881,8 +890,11 @@ class OutlookReportExtractor:
             self.logger.error(error_msg)
             print(f"❌ {error_msg}")
     
-    def run_extraction(self, folder_name="研發處", start_date=None, end_date=None, keywords=None):
-        """執行完整的抓取和彙整流程"""
+    def run_extraction(self, folder_name="研發處", start_date=None, end_date=None, keywords=None, filter_weekly=True):
+        """執行完整的抓取和彙整流程
+
+        :param filter_weekly: 是否只抓取週報郵件
+        """
         print("🚀 開始週報抓取和彙整流程...")
         print("=" * 60)
         
@@ -890,7 +902,7 @@ class OutlookReportExtractor:
         
         # 抓取郵件
         print("📬 正在抓取週報郵件...")
-        messages = self.get_emails_from_folder(folder_name, start_date, end_date)
+        messages = self.get_emails_from_folder(folder_name, start_date, end_date, filter_weekly)
         
         if not messages or len(messages) == 0:
             print("❌ 沒有找到任何郵件")
@@ -902,7 +914,10 @@ class OutlookReportExtractor:
         skipped_count = 0
         
         print("\n🔍 正在分析郵件內容...")
-        print("📋 週報識別標準: 只抓取標題包含「周報」或「週報」或「工作進度」或「本周進度」的信件")
+        if filter_weekly:
+            print("📋 週報識別標準: 只抓取標題包含「周報」或「週報」或「工作進度」或「本周進度」的信件")
+        else:
+            print("📋 已關閉週報關鍵字過濾，將處理所有信件")
         if keywords:
             print(f"🔍 關鍵字過濾: {', '.join(keywords)}")
         print("-" * 60)
@@ -990,11 +1005,13 @@ def main():
         folder_name = "研發處"
         start_date = None
         end_date = None
+        filter_weekly = "--no-filter-weekly" not in sys.argv
         
         print("⚙️  目前設定:")
         print(f"   📁 主資料夾: {folder_name}")
         print(f"   📅 搜尋範圍: 過去 {end_date - start_date if end_date else '全部'} 天")
         print(f"   🔍 識別規則: 智能識別週報相關關鍵字及格式模式")
+        print(f"   🔑 關鍵字過濾: {'開啟' if filter_weekly else '關閉'}")
         print(f"   📝 支援格式: 202506w1本周進度、6/2~6/6 Sheena工作進度、JoeWang_6W1工作進度 等")
         print(f"   🧹 內容清理: 自動移除 ISCOM- 等前綴，顯示負責人資訊")
         print()
@@ -1020,10 +1037,17 @@ def main():
                     end_date = datetime.strptime(end_input, '%Y/%m/%d').replace(tzinfo=None)
             except ValueError:
                 print("⚠️  輸入的日期格式不正確，使用預設值")
+
+            fw_input = input(f"是否只抓取週報郵件? (Y/n, 目前: {'Y' if filter_weekly else 'N'}): ").strip().lower()
+            if fw_input in ['n', 'no', '否']:
+                filter_weekly = False
+            elif fw_input in ['y', 'yes', '是']:
+                filter_weekly = True
         
         print("\n🔧 使用設定:")
         print(f"   📁 主資料夾: {folder_name}")
         print(f"   📅 天數: {end_date - start_date if end_date else '全部'}")
+        print(f"   🔑 關鍵字過濾: {'開啟' if filter_weekly else '關閉'}")
         print()
         
         # 建立提取器實例
@@ -1031,7 +1055,7 @@ def main():
         extractor = OutlookReportExtractor()
         
         # 執行抓取和彙整
-        extractor.run_extraction(folder_name, start_date, end_date)
+        extractor.run_extraction(folder_name, start_date, end_date, filter_weekly=filter_weekly)
         
     except KeyboardInterrupt:
         print("\n\n⚠️  使用者中斷程式執行")
